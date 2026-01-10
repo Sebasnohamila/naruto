@@ -1,245 +1,88 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html>
-
-    <head>
-
-        <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
-
-        <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-
-
-
-        <style>
-
-            #splash-screen {
-
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-
-                background-color: white; z-index: 9999;
-
-                display: flex; justify-content: center; align-items: center;
-
-                transition: opacity 1s ease-out;
-
-            }
-
-            #splash-screen img { max-width: 60%; height: auto; }
-
-            .arjs-ready #splash-screen { opacity: 0; pointer-events: none; }
-
-        </style>
-
-
-
-        <script>
-
-            AFRAME.registerComponent('videohandler', {
-
-                init: function () {
-
-                    var marker = this.el;
-
-                    this.vid = document.querySelector("#vid");
-
-                    this.model = document.querySelector("#animatedModel"); 
-
-
-
-                    marker.addEventListener('markerFound', function () {
-
-                        this.toggle = true;
-
-                        this.vid.play();
-
-                        if (this.model) this.model.setAttribute('animation-mixer', 'timeScale: 1');
-
-                    }.bind(this));
-
-
-
-                    marker.addEventListener('markerLost', function () {
-
-                        this.toggle = false;
-
-                        this.vid.pause();
-
-                        if (this.model) this.model.setAttribute('animation-mixer', 'timeScale: 0');
-
-                    }.bind(this));
-
-                },
-
-            });
-
-
-
-            AFRAME.registerComponent('fix-video-size', {
-
-                init: function () {
-
-                    var videoEl = document.querySelector("#vid");
-
-                    var planeEl = this.el; 
-
-                    
-
-                    var applySize = function() {
-
-                        if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-
-                            var aspectRatio = videoEl.videoHeight / videoEl.videoWidth;
-
-                            
-
-                            // Mantenemos el factor de escala x2 que pediste
-
-                            var scaleFactor = 2; 
-
-
-
-                            planeEl.setAttribute('width', scaleFactor); 
-
-                            planeEl.setAttribute('height', aspectRatio * scaleFactor);
-
-                        }
-
-                    };
-
-
-
-                    videoEl.addEventListener('loadedmetadata', applySize);
-
-                    if (videoEl.readyState >= 1) applySize();
-
-                }
-
-            });
-
-
-
-            window.addEventListener('arjs-video-loaded', function(e) {
-
-                setTimeout(() => { document.body.classList.add('arjs-ready'); }, 1000);
-
-            });
-
-            setTimeout(() => { document.body.classList.add('arjs-ready'); }, 15000);
-
-        </script>
-
-    </head>
-
-
-
-    <body style="margin: 0; overflow: hidden;">
-
-        <div id="splash-screen"><img src="assets/logo.png" alt="Cargando..."></div>
-
-
-
-        <a-scene
-
-            vr-mode-ui="enabled: false"
-
-            loading-screen="enabled: false;"
-
-            arjs='sourceType: webcam; debugUIEnabled: false;'
-
-            renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;" 
-
-            id="scene" embedded gesture-detector
-
-        >
-
-            <a-assets>
-
-                <video id="vid" src="assets/asset.mp4" preload="auto" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
-
-                <a-asset-item id="miModelo" src="assets/mi-modelo.glb"></a-asset-item>
-
-            </a-assets>
-
-
-
-            <a-entity light="type: ambient; intensity: 1; color: #ffffff"></a-entity>
-
-            <a-entity light="type: directional; intensity: 1.5; castShadow: false;" position="2 4 4"></a-entity>
-
-
-
-            <a-marker
-
-                type="pattern" preset="custom" url="assets/marker.patt"
-
-                videohandler smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5"
-
-                raycaster="objects: .clickable" emitevents="true"
-
-                cursor="fuse: false; rayOrigin: mouse;" id="markerA"
-
-            >
-
-                <a-video
-
-                    src="#vid"
-
-                    fix-video-size
-
-                    position="0 0 0" 
-
-                    rotation="-90 0 0"
-
-                    material="shader: flat; src: #vid; depthWrite: false;"
-
-                ></a-video>
-
-
-
-                <a-entity 
-
-                    id="rotation-container"
-
-                    position="0 0.5 1"
-
-                    class="clickable"
-
-                    gesture-handler="minScale: 0.25; maxScale: 10; rotationFactor: 1;"
-
-                >
-
-                    <a-entity
-
-                        id="animatedModel"
-
-                        gltf-model="#miModelo"
-
-                        scale="0.01 0.01 0.01"
-
-                        position="0 0 0" 
-
-                        rotation="-90 0 0"
-
-                        animation-mixer="loop: repeat" 
-
-                    ></a-entity>
-
-                </a-entity>
-
-
-
-            </a-marker>
-
-            <a-entity camera></a-entity>
-
-        </a-scene>
-
-    </body>
-
+<head>
+    <title>AR.js con Sketchfab Embed</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <style>
+        /* Estilos para ocultar y centrar el contenedor de Sketchfab */
+        #sketchfab-container {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%; /* Ajusta el tamaño según prefieras */
+            height: 60%;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
+        }
+
+        /* Ajustamos el iframe para que llene el contenedor */
+        .sketchfab-embed-wrapper, iframe {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 5px;
+        }
+
+        /* Botón opcional para cerrar manual si molesta */
+        #close-btn {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body style="margin: 0; overflow: hidden;">
+
+    <div id="sketchfab-container">
+        <button id="close-btn" onclick="document.getElementById('sketchfab-container').style.display='none'">X</button>
+        
+        <div class="sketchfab-embed-wrapper"> 
+            <iframe title="Majin Vegeta final explosion" frameborder="0" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking" xr-spatial-tracking execution-while-out-of-viewport execution-while-not-rendered web-share src="https://sketchfab.com/models/88801802829f404bae2063a6cb48e2d6/embed?autostart=1"> </iframe> 
+        </div>
+        </div>
+
+    <a-scene embedded arjs>
+        
+        <a-marker type="pattern" url="marker.patt" id="my-marker">
+            <a-box position="0 0.5 0" material="opacity: 0.5; color: #F70087;"></a-box>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        // Lógica para detectar el marcador
+        var marker = document.querySelector('#my-marker');
+        var overlay = document.querySelector('#sketchfab-container');
+
+        // Cuando encuentra el marcador
+        marker.addEventListener('markerFound', function() {
+            console.log("Marcador encontrado");
+            overlay.style.display = 'block';
+        });
+
+        // Cuando pierde el marcador
+        marker.addEventListener('markerLost', function() {
+            console.log("Marcador perdido");
+            // Opcional: puedes comentar la siguiente línea si quieres que el modelo se quede 
+            // en pantalla una vez encontrado, aunque quites la cámara del marcador.
+            overlay.style.display = 'none'; 
+        });
+    </script>
+</body>
 </html>
