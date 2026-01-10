@@ -1,245 +1,84 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html>
-
-    <head>
-
-        <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-
-        <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
-
-        <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
-
-
-
-        <style>
-
-            #splash-screen {
-
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-
-                background-color: white; z-index: 9999;
-
-                display: flex; justify-content: center; align-items: center;
-
-                transition: opacity 1s ease-out;
-
-            }
-
-            #splash-screen img { max-width: 60%; height: auto; }
-
-            .arjs-ready #splash-screen { opacity: 0; pointer-events: none; }
-
-        </style>
-
-
-
-        <script>
-
-            AFRAME.registerComponent('videohandler', {
-
-                init: function () {
-
-                    var marker = this.el;
-
-                    this.vid = document.querySelector("#vid");
-
-                    this.model = document.querySelector("#animatedModel"); 
-
-
-
-                    marker.addEventListener('markerFound', function () {
-
-                        this.toggle = true;
-
-                        this.vid.play();
-
-                        if (this.model) this.model.setAttribute('animation-mixer', 'timeScale: 1');
-
-                    }.bind(this));
-
-
-
-                    marker.addEventListener('markerLost', function () {
-
-                        this.toggle = false;
-
-                        this.vid.pause();
-
-                        if (this.model) this.model.setAttribute('animation-mixer', 'timeScale: 0');
-
-                    }.bind(this));
-
-                },
-
-            });
-
-
-
-            AFRAME.registerComponent('fix-video-size', {
-
-                init: function () {
-
-                    var videoEl = document.querySelector("#vid");
-
-                    var planeEl = this.el; 
-
-                    
-
-                    var applySize = function() {
-
-                        if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-
-                            var aspectRatio = videoEl.videoHeight / videoEl.videoWidth;
-
-                            
-
-                            // Mantenemos el factor de escala x2 que pediste
-
-                            var scaleFactor = 2; 
-
-
-
-                            planeEl.setAttribute('width', scaleFactor); 
-
-                            planeEl.setAttribute('height', aspectRatio * scaleFactor);
-
-                        }
-
-                    };
-
-
-
-                    videoEl.addEventListener('loadedmetadata', applySize);
-
-                    if (videoEl.readyState >= 1) applySize();
-
-                }
-
-            });
-
-
-
-            window.addEventListener('arjs-video-loaded', function(e) {
-
-                setTimeout(() => { document.body.classList.add('arjs-ready'); }, 1000);
-
-            });
-
-            setTimeout(() => { document.body.classList.add('arjs-ready'); }, 15000);
-
-        </script>
-
-    </head>
-
-
-
-    <body style="margin: 0; overflow: hidden;">
-
-        <div id="splash-screen"><img src="assets/logo.png" alt="Cargando..."></div>
-
-
-
-        <a-scene
-
-            vr-mode-ui="enabled: false"
-
-            loading-screen="enabled: false;"
-
-            arjs='sourceType: webcam; debugUIEnabled: false;'
-
-            renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;" 
-
-            id="scene" embedded gesture-detector
-
+  <head>
+    <title>AR Proyecto - Audio Fantasma</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/fcor/arjs-gestures/master/dist/gestures.js"></script>
+  </head>
+
+  <body style="margin: 0; overflow: hidden;">
+    
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+      renderer="logarithmicDepthBuffer: true;"
+      vr-mode-ui="enabled: false"
+      gesture-detector
+      id="scene"
+    >
+      
+      <a-assets>
+        <a-asset-item id="modelo3d" src="./tumodelo.glb"></a-asset-item>
+        
+        <video 
+            id="videoFantasma" 
+            src="./video_o_musica.mp4" 
+            preload="auto" 
+            response-type="arraybuffer" 
+            loop 
+            crossorigin 
+            webkit-playsinline 
+            playsinline>
+        </video>
+      </a-assets>
+
+      <a-marker
+        type="pattern"
+        url="./tumarcador.patt"
+        raycaster="objects: .clickable"
+        emitevents="true"
+        cursor="fuse: false; rayOrigin: mouse;"
+        id="markerA"
+      >
+        <a-entity
+          id="bowser-model"
+          gltf-model="#modelo3d"
+          position="0 0 0"
+          scale="0.5 0.5 0.5"
+          class="clickable"
+          gesture-handler
         >
+        </a-entity>
+        
+        </a-marker>
 
-            <a-assets>
+      <a-entity camera></a-entity>
+    </a-scene>
 
-                <video id="vid" src="assets/asset.mp4" preload="auto" response-type="arraybuffer" loop crossorigin webkit-playsinline autoplay playsinline></video>
+    <script>
+      var video = document.getElementById("videoFantasma");
+      var marker = document.getElementById("markerA");
 
-                <a-asset-item id="miModelo" src="assets/mi-modelo.glb"></a-asset-item>
+      // Cuando aparece el marcador
+      marker.addEventListener("markerFound", function () {
+          console.log("Marcador detectado: Reproduciendo sonido...");
+          video.play();
+      });
 
-            </a-assets>
-
-
-
-            <a-entity light="type: ambient; intensity: 1; color: #ffffff"></a-entity>
-
-            <a-entity light="type: directional; intensity: 1.5; castShadow: false;" position="2 4 4"></a-entity>
-
-
-
-            <a-marker
-
-                type="pattern" preset="custom" url="assets/marker.patt"
-
-                videohandler smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5"
-
-                raycaster="objects: .clickable" emitevents="true"
-
-                cursor="fuse: false; rayOrigin: mouse;" id="markerA"
-
-            >
-
-                <a-video
-
-                    src="#vid"
-
-                    fix-video-size
-
-                    position="0 0 0" 
-
-                    rotation="-90 0 0"
-
-                    material="shader: flat; src: #vid; depthWrite: false;"
-
-                ></a-video>
-
-
-
-                <a-entity 
-
-                    id="rotation-container"
-
-                    position="0 0.5 1"
-
-                    class="clickable"
-
-                    gesture-handler="minScale: 0.25; maxScale: 10; rotationFactor: 1;"
-
-                >
-
-                    <a-entity
-
-                        id="animatedModel"
-
-                        gltf-model="#miModelo"
-
-                        scale="0.01 0.01 0.01"
-
-                        position="0 0 0" 
-
-                        rotation="-90 0 0"
-
-                        animation-mixer="loop: repeat" 
-
-                    ></a-entity>
-
-                </a-entity>
-
-
-
-            </a-marker>
-
-            <a-entity camera></a-entity>
-
-        </a-scene>
-
-    </body>
-
+      // Cuando se va el marcador
+      marker.addEventListener("markerLost", function () {
+          console.log("Marcador perdido: Pausando...");
+          video.pause();
+          // video.currentTime = 0; // Descomenta esto si quieres que reinicie siempre
+      });
+      
+      // SOLUCIÓN PARA MOVILES:
+      // Si el navegador bloquea el sonido, este código lo desbloquea
+      // apenas toques la pantalla para rotar la figura.
+      window.addEventListener('click', function () {
+          video.play();
+      });
+    </script>
+  </body>
 </html>
