@@ -11,23 +11,19 @@
         <style>
             body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #111; }
             
-            /* PANTALLA DE INICIO / CARGA */
+            /* --- INTERFAZ IGUAL A LA ANTERIOR --- */
             #overlay-container {
                 position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: white; /* O puedes poner un degradado dorado */
+                background: radial-gradient(circle, #ffffff 0%, #e0e0e0 100%);
                 z-index: 9999;
                 display: flex; flex-direction: column; justify-content: center; align-items: center;
                 transition: opacity 0.8s ease-out;
             }
-
             #overlay-logo { max-width: 50%; height: auto; margin-bottom: 20px; }
-            
             #loading-text { font-size: 16px; color: #666; animation: blink 1.5s infinite; }
-
-            /* BOTÓN DE INICIO */
+            
             #start-button {
-                display: none; /* Se oculta hasta cargar */
-                width: 130px; height: 130px;
+                display: none; width: 130px; height: 130px;
                 background: radial-gradient(circle, #d4af37 0%, #b8962e 100%);
                 color: white; border-radius: 50%; border: 4px solid #fff;
                 font-size: 16px; font-weight: bold; cursor: pointer;
@@ -39,15 +35,12 @@
             @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
             .fade-out { opacity: 0; pointer-events: none; }
 
-            /* WHATSAPP */
-            #whatsapp-button {
-                display: none; position: fixed; bottom: 20px; left: 20px; z-index: 9998;
-            }
+            #whatsapp-button { display: none; position: fixed; bottom: 20px; left: 20px; z-index: 9998; }
             #whatsapp-button img { width: 50px; height: 50px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
         </style>
 
         <script>
-            // LÓGICA PRINCIPAL
+            // GESTOR DE LA APP (Carga y Audio)
             AFRAME.registerComponent('app-manager', {
                 init: function () {
                     const model = document.querySelector("#animatedModel");
@@ -55,46 +48,120 @@
                     const loadTxt = document.querySelector("#loading-text");
                     const startBtn = document.querySelector("#start-button");
                     const audio = document.querySelector("#bg-music");
-                    const clickFx = document.querySelector("#click-sound");
                     const waBtn = document.querySelector("#whatsapp-button");
 
-                    // 1. Cuando el modelo 3D está listo
                     model.addEventListener('model-loaded', () => {
                         loadTxt.style.display = 'none';
                         startBtn.style.display = 'block';
                     });
 
-                    // 2. Cuando el usuario hace click para entrar
                     startBtn.addEventListener('click', () => {
-                        // Reproducir sonido click
-                        if(clickFx) clickFx.play().catch(e=>{});
-                        
-                        // Quitar pantalla de carga
                         overlay.classList.add('fade-out');
                         setTimeout(() => { overlay.style.display = 'none'; }, 800);
-
-                        // Mostrar Whatsapp
                         waBtn.style.display = 'block';
-
-                        // ACTIVAR MÚSICA (Aquí es donde el navegador nos da permiso)
-                        if(audio) {
-                            audio.volume = 1.0;
-                            audio.play();
-                        }
+                        if(audio) { audio.volume = 1.0; audio.play(); }
                     });
                 }
             });
 
-            // GESTOS (ROTAR Y ZOOM) - Simplificado para 3D
-            AFRAME.registerComponent('model-controls', {
+            // --- CONTROLADOR DE GESTOS ROBUSTO ---
+            // Permite girar con 1 dedo y hacer zoom con 2 dedos sin mover la cámara.
+            AFRAME.registerComponent('model-controller', {
+                schema: {
+                    speed: { default: 0.01 }, // Velocidad de rotación
+                    minScale: { default: 0.005 }, // Tamaño mínimo
+                    maxScale: { default: 0.2 }   // Tamaño máximo
+                },
                 init: function () {
-                    this.el.sceneEl.addEventListener('touchmove', (e) => {
-                        if (e.touches.length === 1) {
-                            // Rotar modelo con 1 dedo
-                            this.el.object3D.rotation.y += e.movementX * 0.005;
-                        }
-                    });
-                    // Puedes agregar zoom aquí si quieres, pero A-Frame tiene controles de cámara por defecto
+                    this.startX = 0;
+                    this.startY = 0;
+                    this.initialScale = null;
+                    this.initialDistance = 0;
+                    this.isDragging = false;
+
+                    // Eventos Táctiles y de Mouse
+                    this.el.sceneEl.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+                    window.addEventListener('mousemove', this.onMouseMove.bind(this));
+                    window.addEventListener('mouseup', this.onMouseUp.bind(this));
+                    
+                    this.el.sceneEl.canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+                    window.addEventListener('touchmove', this.onTouchMove.bind(this));
+                    window.addEventListener('touchend', this.onTouchEnd.bind(this));
+                },
+
+                // --- RATÓN (PC) ---
+                onMouseDown: function (e) {
+                    this.isDragging = true;
+                    this.startX = e.clientX;
+                    this.startY = e.clientY;
+                },
+                onMouseMove: function (e) {
+                    if (!this.isDragging) return;
+                    var deltaX = e.clientX - this.startX;
+                    var deltaY = e.clientY - this.startY;
+                    this.rotateModel(deltaX, deltaY);
+                    this.startX = e.clientX;
+                    this.startY = e.clientY;
+                },
+                onMouseUp: function () { this.isDragging = false; },
+
+                // --- TÁCTIL (MÓVIL) ---
+                onTouchStart: function (e) {
+                    if (e.touches.length === 1) {
+                        // Un dedo: Preparar rotación
+                        this.startX = e.touches[0].clientX;
+                        this.startY = e.touches[0].clientY;
+                        this.isDragging = true;
+                    } else if (e.touches.length === 2) {
+                        // Dos dedos: Preparar Zoom (Escala)
+                        this.isDragging = false; // Desactiva rotación para no marear
+                        var dx = e.touches[0].clientX - e.touches[1].clientX;
+                        var dy = e.touches[0].clientY - e.touches[1].clientY;
+                        this.initialDistance = Math.sqrt(dx * dx + dy * dy);
+                        this.initialScale = this.el.object3D.scale.clone();
+                    }
+                },
+                onTouchMove: function (e) {
+                    if (e.touches.length === 1 && this.isDragging) {
+                        // Rotar
+                        var deltaX = e.touches[0].clientX - this.startX;
+                        var deltaY = e.touches[0].clientY - this.startY;
+                        this.rotateModel(deltaX, deltaY);
+                        this.startX = e.touches[0].clientX;
+                        this.startY = e.touches[0].clientY;
+                    } else if (e.touches.length === 2 && this.initialScale) {
+                        // Escalar (Pinch Zoom)
+                        var dx = e.touches[0].clientX - e.touches[1].clientX;
+                        var dy = e.touches[0].clientY - e.touches[1].clientY;
+                        var currentDistance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        var scaleFactor = currentDistance / this.initialDistance;
+                        
+                        var newX = this.initialScale.x * scaleFactor;
+                        var newY = this.initialScale.y * scaleFactor;
+                        var newZ = this.initialScale.z * scaleFactor;
+
+                        // Limites de zoom
+                        newX = Math.min(Math.max(newX, this.data.minScale), this.data.maxScale);
+                        newY = Math.min(Math.max(newY, this.data.minScale), this.data.maxScale);
+                        newZ = Math.min(Math.max(newZ, this.data.minScale), this.data.maxScale);
+
+                        this.el.object3D.scale.set(newX, newY, newZ);
+                    }
+                },
+                onTouchEnd: function () {
+                    this.isDragging = false;
+                    this.initialDistance = 0;
+                },
+
+                // Lógica de Rotación
+                rotateModel: function (deltaX, deltaY) {
+                    // Rotación Horizontal (Y)
+                    this.el.object3D.rotation.y += deltaX * this.data.speed;
+                    
+                    // Rotación Vertical (X) - Con límites para que no de la vuelta completa rara
+                    // this.el.object3D.rotation.x += deltaY * this.data.speed; 
+                    // (Opcional: Descomenta la línea de arriba si quieres girar arriba/abajo también)
                 }
             });
         </script>
@@ -103,7 +170,7 @@
     <body>
         <div id="overlay-container">
             <img id="overlay-logo" src="assets/logo.png" alt="Bhastian">
-            <div id="loading-text">Cargando Experiencia 3D...</div>
+            <div id="loading-text">Cargando Modelo 3D...</div>
             <button id="start-button">VER<br>EXPERIENCIA</button>
         </div>
 
@@ -112,33 +179,31 @@
         </a>
 
         <audio id="bg-music" src="assets/audio.mp3" loop></audio>
-        <audio id="click-sound" src="assets/click.mp3"></audio>
 
         <a-scene 
             app-manager 
             loading-screen="enabled: false" 
-            renderer="colorManagement: true; antialias: true;"
-            background="color: #222222"
+            background="color: #252525"
+            renderer="colorManagement: true; antialias: true; highRefreshRate: true;"
             vr-mode-ui="enabled: false">
             
             <a-assets>
                 <a-asset-item id="modeloGLB" src="assets/tanjirofinal4.glb"></a-asset-item>
             </a-assets>
 
-            <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-            <a-light type="directional" position="-1 1 1" intensity="0.5"></a-light>
-
-            <a-entity camera position="0 1.6 2" look-controls="enabled: false"></a-entity>
+            <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+            <a-light type="directional" position="2 4 5" intensity="1.5" castShadow="true"></a-light>
+            <a-light type="point" position="-2 2 -2" intensity="0.5" color="#ffd700"></a-light> <a-entity camera position="0 1.5 2" look-controls="enabled: false"></a-entity>
 
             <a-entity 
                 id="animatedModel"
                 gltf-model="#modeloGLB"
-                position="0 0 -1"
+                position="0 0.5 -1"
                 scale="0.012 0.012 0.012"
+                rotation="0 0 0"
                 animation-mixer="loop: repeat"
-                model-controls
+                model-controller="minScale: 0.005; maxScale: 0.05" 
             ></a-entity>
-
-        </a-scene>
+            </a-scene>
     </body>
 </html>
