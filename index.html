@@ -3,14 +3,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <title>Visor 3D Bhastian - Relámpagos Fuego</title>
+        <title>Visor 3D Bhastian - Estrellas Neón</title>
 
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
         <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
         <style>
             body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #111; }
-            /* ESTILOS DE INTERFAZ (Iguales que antes) */
+            /* ESTILOS DE INTERFAZ (Sin cambios) */
             #overlay-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #ffffff 0%, #e0e0e0 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease-out; }
             #overlay-logo { max-width: 50%; height: auto; margin-bottom: 20px; }
             #loading-text { font-size: 16px; color: #666; animation: blink 1.5s infinite; }
@@ -23,102 +23,92 @@
         </style>
 
         <script>
-            // --- NUEVO COMPONENTE: SISTEMA DE RELÁMPAGOS DE FUEGO ---
-            // Controla una luz específica para que parpadee intensamente en tonos naranjas/rojos
-            AFRAME.registerComponent('fire-flash-system', {
+            // --- NUEVO COMPONENTE: SISTEMA DE ESTRELLAS FUGACES NEÓN ---
+            AFRAME.registerComponent('shooting-stars-system', {
                 schema: {
-                    lightId: { default: '#fire-flash-light' }, // ID de la luz a controlar
-                    minInterval: { default: 800 },  // Tiempo mínimo entre flashes (ms)
-                    maxInterval: { default: 4000 }  // Tiempo máximo entre flashes (ms)
+                    color: { default: '#ff073a' }, // Rojo Neón intenso
+                    minInterval: { default: 800 }, // Tiempo mínimo entre estrellas (ms)
+                    maxInterval: { default: 2500 } // Tiempo máximo (ms)
                 },
                 init: function () {
-                    this.lightEl = document.querySelector(this.data.lightId);
                     this.isRunning = false;
-                    // Colores de fuego posibles
-                    this.fireColors = ['#ff4500', '#ff8c00', '#ffae00', '#ff2a00', '#ff6a00'];
-
                     // Activar al hacer click en empezar
                     document.querySelector("#start-button").addEventListener('click', () => {
                         this.isRunning = true;
-                        this.scheduleNextFlash();
+                        this.scheduleNextStar();
                     });
                 },
-                scheduleNextFlash: function () {
-                    if (!this.isRunning || !this.lightEl) return;
-                    // Calcular tiempo aleatorio para el próximo flash
-                    const delay = Math.random() * (this.data.maxInterval - this.data.minInterval) + this.data.minInterval;
-                    setTimeout(() => { this.triggerFlash(); }, delay);
-                },
-                triggerFlash: function () {
+                scheduleNextStar: function () {
                     if (!this.isRunning) return;
+                    const delay = Math.random() * (this.data.maxInterval - this.data.minInterval) + this.data.minInterval;
+                    setTimeout(() => { this.spawnStar(); this.scheduleNextStar(); }, delay);
+                },
+                spawnStar: function () {
+                    if (!this.el.sceneEl) return;
+                    const star = document.createElement('a-entity');
 
-                    // 1. Elegir un color de fuego aleatorio
-                    const randomColor = this.fireColors[Math.floor(Math.random() * this.fireColors.length)];
-                    this.lightEl.setAttribute('color', randomColor);
+                    // 1. Definir puntos de inicio y fin aleatorios en el fondo lejano
+                    // Comienzan alto en un lado, terminan bajo en el lado opuesto
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    const startPos = new THREE.Vector3(side * (15 + Math.random() * 10), 10 + Math.random() * 5, -25);
+                    const endPos = new THREE.Vector3(-side * (15 + Math.random() * 10), -5 - Math.random() * 5, -25);
 
-                    // 2. Determinar intensidad y duración del flash
-                    const peakIntensity = 3 + Math.random() * 4; // Intensidad muy alta (entre 3 y 7)
-                    const flashDuration = 100 + Math.random() * 250; // Duración corta
+                    // 2. Geometría: Un plano largo y muy delgado para simular el rastro
+                    const length = 5 + Math.random() * 5;
+                    star.setAttribute('geometry', { primitive: 'plane', height: length, width: 0.04 });
 
-                    // 3. Animar la intensidad (subida rápida, bajada rápida)
-                    // Usamos las animaciones nativas de A-Frame para que sea suave
-                    this.lightEl.setAttribute('animation__flash_up', {
-                        property: 'intensity', from: 0, to: peakIntensity, dur: 40, easing: 'easeOutQuad'
+                    // 3. Material: Rojo Neón Brillante (Emisivo + Aditivo)
+                    star.setAttribute('material', {
+                        shader: 'standard',
+                        color: this.data.color,
+                        emissive: this.data.color, // Hace que brille con luz propia
+                        emissiveIntensity: 4,      // Intensidad del brillo neón
+                        transparent: true,
+                        opacity: 0.9,
+                        blending: 'additive',      // Efecto de luz transparente
+                        side: 'double'
                     });
-                    this.lightEl.setAttribute('animation__flash_down', {
-                        property: 'intensity', from: peakIntensity, to: 0, dur: flashDuration, delay: 40, easing: 'easeInQuad'
+
+                    // 4. Posición Inicial
+                    star.object3D.position.copy(startPos);
+                    
+                    // 5. Orientación: Usamos Three.js para apuntar la tira hacia su destino
+                    star.object3D.lookAt(endPos);
+                    // Ajuste: Rotar 90 grados en X para que el plano quede "acostado" a lo largo de la trayectoria
+                    star.object3D.rotateX(Math.PI / 2);
+
+                    // 6. Animaciones: Moverse y Desvanecerse
+                    const duration = 1000 + Math.random() * 1000; // Velocidad entre 1s y 2s
+
+                    // Animación de movimiento
+                    star.setAttribute('animation__move', {
+                        property: 'position',
+                        to: `${endPos.x} ${endPos.y} ${endPos.z}`,
+                        dur: duration,
+                        easing: 'linear'
+                    });
+                    // Animación de desvanecimiento (fade out)
+                    star.setAttribute('animation__fade', {
+                        property: 'material.opacity',
+                        from: 0.9,
+                        to: 0,
+                        dur: duration * 0.8, // Se desvanece un poco antes de terminar el viaje
+                        delay: duration * 0.2,
+                        easing: 'linear'
                     });
 
-                    // 4. Efecto "Doble Flash": A veces ocurre un segundo flash más pequeño inmediatamente después para realismo
-                    if (Math.random() > 0.6) {
-                         setTimeout(() => {
-                            this.lightEl.setAttribute('animation__flash_up_2', {
-                                property: 'intensity', from: 0, to: peakIntensity * 0.6, dur: 30, easing: 'easeOutQuad'
-                            });
-                            this.lightEl.setAttribute('animation__flash_down_2', {
-                                property: 'intensity', from: peakIntensity * 0.6, to: 0, dur: 100, delay: 30, easing: 'easeInQuad'
-                            });
-                        }, flashDuration + 50);
-                    }
+                    // 7. Limpieza: Borrar el elemento al terminar
+                    star.addEventListener('animationcomplete__move', () => {
+                        if(star.parentNode) star.parentNode.removeChild(star);
+                    });
 
-                    // Programar el siguiente ciclo
-                    this.scheduleNextFlash();
+                    this.el.sceneEl.appendChild(star);
                 }
             });
 
             // --- COMPONENTES ANTERIORES (App Manager y Controller) ---
-            AFRAME.registerComponent('app-manager', {
-                init: function () {
-                    const model = document.querySelector("#animatedModel");
-                    const overlay = document.querySelector("#overlay-container");
-                    const loadTxt = document.querySelector("#loading-text");
-                    const startBtn = document.querySelector("#start-button");
-                    const audio = document.querySelector("#bg-music");
-                    const waBtn = document.querySelector("#whatsapp-button");
-                    model.addEventListener('model-loaded', () => { loadTxt.style.display = 'none'; startBtn.style.display = 'block'; });
-                    startBtn.addEventListener('click', () => {
-                        overlay.classList.add('fade-out'); setTimeout(() => { overlay.style.display = 'none'; }, 800);
-                        waBtn.style.display = 'block';
-                        if(audio) { audio.volume = 1.0; audio.play(); }
-                    });
-                }
-            });
-            // Controlador de gestos optimizado (sin cambios)
-            AFRAME.registerComponent('model-controller', {
-                schema: { speed: { default: 0.01 }, minScale: { default: 0.005 }, maxScale: { default: 0.2 } },
-                init: function () {
-                    this.startX = 0; this.startY = 0; this.initialScale = null; this.initialDistance = 0; this.isDragging = false;
-                    this.el.sceneEl.canvas.addEventListener('mousedown', this.onMouseDown.bind(this)); window.addEventListener('mousemove', this.onMouseMove.bind(this)); window.addEventListener('mouseup', this.onMouseUp.bind(this));
-                    this.el.sceneEl.canvas.addEventListener('touchstart', this.onTouchStart.bind(this)); window.addEventListener('touchmove', this.onTouchMove.bind(this)); window.addEventListener('touchend', this.onTouchEnd.bind(this));
-                },
-                onMouseDown: function (e) { this.isDragging = true; this.startX = e.clientX; this.startY = e.clientY; },
-                onMouseMove: function (e) { if (!this.isDragging) return; var deltaX = e.clientX - this.startX; this.rotateModel(deltaX); this.startX = e.clientX; this.startY = e.clientY; },
-                onMouseUp: function () { this.isDragging = false; },
-                onTouchStart: function (e) { if (e.touches.length === 1) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.isDragging = true; } else if (e.touches.length === 2) { this.isDragging = false; var dx = e.touches[0].clientX - e.touches[1].clientX; var dy = e.touches[0].clientY - e.touches[1].clientY; this.initialDistance = Math.sqrt(dx * dx + dy * dy); this.initialScale = this.el.object3D.scale.clone(); } },
-                onTouchMove: function (e) { if (e.touches.length === 1 && this.isDragging) { var deltaX = e.touches[0].clientX - this.startX; this.rotateModel(deltaX); this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; } else if (e.touches.length === 2 && this.initialScale) { var dx = e.touches[0].clientX - e.touches[1].clientX; var dy = e.touches[0].clientY - e.touches[1].clientY; var currentDistance = Math.sqrt(dx * dx + dy * dy); var scaleFactor = currentDistance / this.initialDistance; var newX = Math.min(Math.max(this.initialScale.x * scaleFactor, this.data.minScale), this.data.maxScale); var newY = Math.min(Math.max(this.initialScale.y * scaleFactor, this.data.minScale), this.data.maxScale); var newZ = Math.min(Math.max(this.initialScale.z * scaleFactor, this.data.minScale), this.data.maxScale); this.el.object3D.scale.set(newX, newY, newZ); } },
-                onTouchEnd: function () { this.isDragging = false; this.initialDistance = 0; },
-                rotateModel: function (deltaX) { this.el.object3D.rotation.y += deltaX * this.data.speed; }
-            });
+            AFRAME.registerComponent('app-manager', { init: function () { const model = document.querySelector("#animatedModel"); const overlay = document.querySelector("#overlay-container"); const loadTxt = document.querySelector("#loading-text"); const startBtn = document.querySelector("#start-button"); const audio = document.querySelector("#bg-music"); const waBtn = document.querySelector("#whatsapp-button"); model.addEventListener('model-loaded', () => { loadTxt.style.display = 'none'; startBtn.style.display = 'block'; }); startBtn.addEventListener('click', () => { overlay.classList.add('fade-out'); setTimeout(() => { overlay.style.display = 'none'; }, 800); waBtn.style.display = 'block'; if(audio) { audio.volume = 1.0; audio.play(); } }); } });
+            AFRAME.registerComponent('model-controller', { schema: { speed: { default: 0.01 }, minScale: { default: 0.005 }, maxScale: { default: 0.2 } }, init: function () { this.startX = 0; this.startY = 0; this.initialScale = null; this.initialDistance = 0; this.isDragging = false; this.el.sceneEl.canvas.addEventListener('mousedown', this.onMouseDown.bind(this)); window.addEventListener('mousemove', this.onMouseMove.bind(this)); window.addEventListener('mouseup', this.onMouseUp.bind(this)); this.el.sceneEl.canvas.addEventListener('touchstart', this.onTouchStart.bind(this)); window.addEventListener('touchmove', this.onTouchMove.bind(this)); window.addEventListener('touchend', this.onTouchEnd.bind(this)); }, onMouseDown: function (e) { this.isDragging = true; this.startX = e.clientX; this.startY = e.clientY; }, onMouseMove: function (e) { if (!this.isDragging) return; var deltaX = e.clientX - this.startX; this.rotateModel(deltaX); this.startX = e.clientX; this.startY = e.clientY; }, onMouseUp: function () { this.isDragging = false; }, onTouchStart: function (e) { if (e.touches.length === 1) { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; this.isDragging = true; } else if (e.touches.length === 2) { this.isDragging = false; var dx = e.touches[0].clientX - e.touches[1].clientX; var dy = e.touches[0].clientY - e.touches[1].clientY; this.initialDistance = Math.sqrt(dx * dx + dy * dy); this.initialScale = this.el.object3D.scale.clone(); } }, onTouchMove: function (e) { if (e.touches.length === 1 && this.isDragging) { var deltaX = e.touches[0].clientX - this.startX; this.rotateModel(deltaX); this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY; } else if (e.touches.length === 2 && this.initialScale) { var dx = e.touches[0].clientX - e.touches[1].clientX; var dy = e.touches[0].clientY - e.touches[1].clientY; var currentDistance = Math.sqrt(dx * dx + dy * dy); var scaleFactor = currentDistance / this.initialDistance; var newX = Math.min(Math.max(this.initialScale.x * scaleFactor, this.data.minScale), this.data.maxScale); var newY = Math.min(Math.max(this.initialScale.y * scaleFactor, this.data.minScale), this.data.maxScale); var newZ = Math.min(Math.max(this.initialScale.z * scaleFactor, this.data.minScale), this.data.maxScale); this.el.object3D.scale.set(newX, newY, newZ); } }, onTouchEnd: function () { this.isDragging = false; this.initialDistance = 0; }, rotateModel: function (deltaX) { this.el.object3D.rotation.y += deltaX * this.data.speed; } });
         </script>
     </head>
 
@@ -133,9 +123,9 @@
 
         <a-scene 
             app-manager
-            fire-flash-system="lightId: #fire-flash-light"
+            shooting-stars-system="color: #ff073a"
             loading-screen="enabled: false" 
-            background="color: #151515" 
+            background="color: #080000" 
             renderer="colorManagement: true; antialias: true;"
             vr-mode-ui="enabled: false">
             
@@ -143,10 +133,9 @@
                 <a-asset-item id="modeloGLB" src="assets/tanjirofinal4.glb"></a-asset-item>
             </a-assets>
 
-            <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
-            <a-light type="directional" position="2 4 5" intensity="0.6" color="#ffecd1"></a-light>
-
-            <a-light id="fire-flash-light" type="point" position="0 4 3" intensity="0" distance="20" color="#ff4500" decay="2"></a-light>
+            <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+            <a-light type="directional" position="2 4 5" intensity="1" color="#ffffff"></a-light>
+            <a-light type="point" position="0 -5 -5" intensity="0.5" color="#ff0000"></a-light>
 
             <a-entity camera position="0 1.5 2" look-controls="enabled: false"></a-entity>
 
@@ -154,7 +143,7 @@
                 id="animatedModel"
                 gltf-model="#modeloGLB"
                 position="0 0.2 -1"
-                scale="0.01 0.01 0.01"
+                scale="0.011 0.011 0.011"
                 rotation="0 0 0"
                 animation-mixer="loop: repeat"
                 model-controller="minScale: 0.005; maxScale: 0.05" 
