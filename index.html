@@ -3,14 +3,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <title>Visor 3D Bhastian con Rayos</title>
+        <title>Visor 3D Bhastian - Relámpagos Fuego</title>
 
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
         <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
         <style>
             body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #111; }
-            /* Estilos iguales a los anteriores (ocultos para ahorrar espacio) */
+            /* ESTILOS DE INTERFAZ (Iguales que antes) */
             #overlay-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #ffffff 0%, #e0e0e0 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease-out; }
             #overlay-logo { max-width: 50%; height: auto; margin-bottom: 20px; }
             #loading-text { font-size: 16px; color: #666; animation: blink 1.5s infinite; }
@@ -23,93 +23,66 @@
         </style>
 
         <script>
-            // --- NUEVO COMPONENTE: SISTEMA DE RAYOS ---
-            AFRAME.registerComponent('lightning-system', {
+            // --- NUEVO COMPONENTE: SISTEMA DE RELÁMPAGOS DE FUEGO ---
+            // Controla una luz específica para que parpadee intensamente en tonos naranjas/rojos
+            AFRAME.registerComponent('fire-flash-system', {
                 schema: {
-                    color: { type: 'color', default: '#00ffff' }, // Color cian eléctrico
-                    interval: { default: 1500 }, // Cada cuánto tiempo aparece un rayo (ms)
-                    enabled: { default: false } // Empieza apagado hasta que se entra
+                    lightId: { default: '#fire-flash-light' }, // ID de la luz a controlar
+                    minInterval: { default: 800 },  // Tiempo mínimo entre flashes (ms)
+                    maxInterval: { default: 4000 }  // Tiempo máximo entre flashes (ms)
                 },
                 init: function () {
-                    this.timer = null;
-                    // Escuchar cuando el usuario hace click en "Ver Experiencia"
+                    this.lightEl = document.querySelector(this.data.lightId);
+                    this.isRunning = false;
+                    // Colores de fuego posibles
+                    this.fireColors = ['#ff4500', '#ff8c00', '#ffae00', '#ff2a00', '#ff6a00'];
+
+                    // Activar al hacer click en empezar
                     document.querySelector("#start-button").addEventListener('click', () => {
-                        this.data.enabled = true;
-                        this.startLightning();
+                        this.isRunning = true;
+                        this.scheduleNextFlash();
                     });
                 },
-                startLightning: function() {
-                   if(!this.data.enabled) return;
-                   
-                   // Bucle infinito que crea rayos
-                   this.timer = setInterval(() => {
-                        this.spawnBolt();
-                        // A veces crea un segundo rayo rápido para efecto de parpadeo
-                        if(Math.random() > 0.7) setTimeout(() => this.spawnBolt(), 150);
-                   }, this.data.interval + (Math.random() * 1000)); // Intervalo aleatorio
+                scheduleNextFlash: function () {
+                    if (!this.isRunning || !this.lightEl) return;
+                    // Calcular tiempo aleatorio para el próximo flash
+                    const delay = Math.random() * (this.data.maxInterval - this.data.minInterval) + this.data.minInterval;
+                    setTimeout(() => { this.triggerFlash(); }, delay);
                 },
-                spawnBolt: function () {
-                    if (!this.el.sceneEl) return;
+                triggerFlash: function () {
+                    if (!this.isRunning) return;
 
-                    const bolt = document.createElement('a-entity');
-                    
-                    // 1. Geometría: Un plano largo y muy delgado
-                    const height = 2 + Math.random() * 3; // Largo aleatorio entre 2m y 5m
-                    bolt.setAttribute('geometry', {
-                        primitive: 'plane',
-                        height: height,
-                        width: 0.02 + (Math.random() * 0.03) // Ancho variable
+                    // 1. Elegir un color de fuego aleatorio
+                    const randomColor = this.fireColors[Math.floor(Math.random() * this.fireColors.length)];
+                    this.lightEl.setAttribute('color', randomColor);
+
+                    // 2. Determinar intensidad y duración del flash
+                    const peakIntensity = 3 + Math.random() * 4; // Intensidad muy alta (entre 3 y 7)
+                    const flashDuration = 100 + Math.random() * 250; // Duración corta
+
+                    // 3. Animar la intensidad (subida rápida, bajada rápida)
+                    // Usamos las animaciones nativas de A-Frame para que sea suave
+                    this.lightEl.setAttribute('animation__flash_up', {
+                        property: 'intensity', from: 0, to: peakIntensity, dur: 40, easing: 'easeOutQuad'
+                    });
+                    this.lightEl.setAttribute('animation__flash_down', {
+                        property: 'intensity', from: peakIntensity, to: 0, dur: flashDuration, delay: 40, easing: 'easeInQuad'
                     });
 
-                    // 2. Material: El truco del "Additive Blending" para que parezca luz
-                    bolt.setAttribute('material', {
-                        shader: 'flat', // No necesita sombras
-                        color: this.data.color,
-                        transparent: true,
-                        opacity: 0.8,
-                        blending: 'additive', // ¡ESTO ES LA CLAVE DEL BRILLO!
-                        side: 'double'
-                    });
+                    // 4. Efecto "Doble Flash": A veces ocurre un segundo flash más pequeño inmediatamente después para realismo
+                    if (Math.random() > 0.6) {
+                         setTimeout(() => {
+                            this.lightEl.setAttribute('animation__flash_up_2', {
+                                property: 'intensity', from: 0, to: peakIntensity * 0.6, dur: 30, easing: 'easeOutQuad'
+                            });
+                            this.lightEl.setAttribute('animation__flash_down_2', {
+                                property: 'intensity', from: peakIntensity * 0.6, to: 0, dur: 100, delay: 30, easing: 'easeInQuad'
+                            });
+                        }, flashDuration + 50);
+                    }
 
-                    // 3. Posición: Aleatoria alrededor del centro, pero un poco atrás
-                    const posX = (Math.random() - 0.5) * 4; // Entre -2 y 2
-                    const posY = 1 + Math.random() * 3;     // Entre 1m y 4m de altura
-                    const posZ = -1 - (Math.random() * 2); // Detrás del modelo
-                    bolt.setAttribute('position', `${posX} ${posY} ${posZ}`);
-
-                    // 4. Rotación: Inclinaciones aleatorias agresivas
-                    const rotX = (Math.random() - 0.5) * 60;
-                    const rotY = (Math.random() - 0.5) * 60;
-                    const rotZ = (Math.random() - 0.5) * 180; // Giro completo
-                    bolt.setAttribute('rotation', `${rotX} ${rotY} ${rotZ}`);
-
-                    // 5. Animación: Aparecer de golpe y desvanecerse (Flash)
-                    // Usamos 2 animaciones: una para la escala (crecer) y otra para la opacidad (desvanecer)
-                    bolt.setAttribute('animation__appear', {
-                        property: 'scale',
-                        from: '0.1 0 0.1',
-                        to: '1 1 1',
-                        dur: 50, // Aparece muy rápido (50ms)
-                        easing: 'easeOutQuad'
-                    });
-                    bolt.setAttribute('animation__fade', {
-                        property: 'material.opacity',
-                        from: 0.8,
-                        to: 0,
-                        dur: 400, // Tarda 400ms en desvanecerse
-                        delay: 50, // Empieza después de aparecer
-                        easing: 'linear'
-                    });
-
-                    // 6. Limpieza: Borrar el rayo cuando termina la animación para no saturar la memoria
-                    bolt.addEventListener('animationcomplete__fade', () => {
-                        if(bolt.parentNode) bolt.parentNode.removeChild(bolt);
-                    });
-
-                    this.el.sceneEl.appendChild(bolt);
-                },
-                remove: function() {
-                    if(this.timer) clearInterval(this.timer);
+                    // Programar el siguiente ciclo
+                    this.scheduleNextFlash();
                 }
             });
 
@@ -130,6 +103,7 @@
                     });
                 }
             });
+            // Controlador de gestos optimizado (sin cambios)
             AFRAME.registerComponent('model-controller', {
                 schema: { speed: { default: 0.01 }, minScale: { default: 0.005 }, maxScale: { default: 0.2 } },
                 init: function () {
@@ -159,27 +133,28 @@
 
         <a-scene 
             app-manager
-            lightning-system="color: #00eaff; interval: 2000" 
+            fire-flash-system="lightId: #fire-flash-light"
             loading-screen="enabled: false" 
-            background="color: #1a1a1a" 
-            renderer="colorManagement: true; antialias: true; highRefreshRate: true;"
+            background="color: #151515" 
+            renderer="colorManagement: true; antialias: true;"
             vr-mode-ui="enabled: false">
             
             <a-assets>
                 <a-asset-item id="modeloGLB" src="assets/tanjirofinal4.glb"></a-asset-item>
             </a-assets>
 
-            <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-            <a-light type="directional" position="2 4 5" intensity="1.2"></a-light>
-            <a-light type="point" position="-2 3 -2" intensity="0.8" color="#00eaff" distance="10"></a-light>
+            <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
+            <a-light type="directional" position="2 4 5" intensity="0.6" color="#ffecd1"></a-light>
+
+            <a-light id="fire-flash-light" type="point" position="0 4 3" intensity="0" distance="20" color="#ff4500" decay="2"></a-light>
 
             <a-entity camera position="0 1.5 2" look-controls="enabled: false"></a-entity>
 
             <a-entity 
                 id="animatedModel"
                 gltf-model="#modeloGLB"
-                position="0 0 -1"
-                scale="0.01 0.010 0.01"
+                position="0 0.2 -1"
+                scale="0.01 0.01 0.01"
                 rotation="0 0 0"
                 animation-mixer="loop: repeat"
                 model-controller="minScale: 0.005; maxScale: 0.05" 
