@@ -154,14 +154,17 @@
                     this.initialDistance = 0;
                 },
 
-                // Lógica de Rotación
+                // Lógica de Rotación MODIFICADA
                 rotateModel: function (deltaX, deltaY) {
                     // Rotación Horizontal (Y)
                     this.el.object3D.rotation.y += deltaX * this.data.speed;
                     
-                    // Rotación Vertical (X) - Con límites para que no de la vuelta completa rara
-                    // this.el.object3D.rotation.x += deltaY * this.data.speed; 
-                    // (Opcional: Descomenta la línea de arriba si quieres girar arriba/abajo también)
+                    // Rotación Vertical (X)
+                    this.el.object3D.rotation.x += deltaY * this.data.speed;
+
+                    // Limitar la rotación vertical para evitar giros extraños (Clamp entre -85 y +85 grados aprox)
+                    const limit = Math.PI / 2.1; 
+                    this.el.object3D.rotation.x = Math.max(-limit, Math.min(limit, this.el.object3D.rotation.x));
                 }
             });
         </script>
@@ -193,7 +196,8 @@
 
             <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
             <a-light type="directional" position="2 4 5" intensity="1.5" castShadow="true"></a-light>
-            <a-light type="point" position="-2 2 -2" intensity="0.5" color="#ffd700"></a-light> <a-entity camera position="0 1.5 2" look-controls="enabled: false"></a-entity>
+            <a-light type="point" position="-2 2 -2" intensity="0.5" color="#ffd700"></a-light> 
+            <a-entity camera position="0 1.5 2" look-controls="enabled: false"></a-entity>
 
             <a-entity 
                 id="animatedModel"
