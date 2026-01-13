@@ -65,8 +65,8 @@
             AFRAME.registerComponent('model-controller', {
                 schema: {
                     speed: { default: 0.01 },
-                    minScale: { default: 0.001 }, // Valor muy bajo para alejarse mucho
-                    maxScale: { default: 0.5 }    // Valor alto para acercarse mucho
+                    minScale: { default: 0.001 },
+                    maxScale: { default: 1.0 }    // Aumentado para permitir más zoom
                 },
                 init: function () {
                     this.startX = 0;
@@ -89,7 +89,6 @@
 
                 onMouseWheel: function (e) {
                     e.preventDefault();
-                    // Ajustamos la sensibilidad de la rueda aquí (0.001)
                     var factor = 1 - e.deltaY * 0.001;
                     this.applyScale(factor);
                 },
@@ -135,7 +134,6 @@
                         var currentDistance = Math.sqrt(dx * dx + dy * dy);
                         var scaleFactor = currentDistance / this.initialDistance;
                         
-                        // Recalcular escala basado en el pellizco original
                         var newX = this.initialScale.x * scaleFactor;
                         var newY = this.initialScale.y * scaleFactor;
                         var newZ = this.initialScale.z * scaleFactor;
@@ -148,7 +146,6 @@
                     this.initialDistance = 0;
                 },
 
-                // Función auxiliar para aplicar escala (Mouse)
                 applyScale: function(factor) {
                     var currentScale = this.el.object3D.scale;
                     var newX = currentScale.x * factor;
@@ -157,7 +154,6 @@
                     this.applyClampedScale(newX, newY, newZ);
                 },
 
-                // Función auxiliar para limitar y setear escala (Común)
                 applyClampedScale: function(x, y, z) {
                     x = Math.min(Math.max(x, this.data.minScale), this.data.maxScale);
                     y = Math.min(Math.max(y, this.data.minScale), this.data.maxScale);
@@ -207,11 +203,11 @@
             <a-entity 
                 id="animatedModel"
                 gltf-model="#modeloGLB"
-                position="0 1 -.5"
+                position="0 0.5 2"
                 scale="0.01 0.01 0.01"
                 rotation="0 0 0"
                 animation-mixer="loop: repeat"
-                model-controller="minScale: 0.0001; maxScale: 0.5" 
+                model-controller="minScale: 0.0001; maxScale: 1.0" 
             ></a-entity>
             </a-scene>
     </body>
