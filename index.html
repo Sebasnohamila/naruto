@@ -7,29 +7,31 @@
 
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
         <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+        <script src="https://unpkg.com/aframe-orbit-controls@1.3.0/dist/aframe-orbit-controls.min.js"></script>
 
         <style>
             body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #111; }
-            /* ESTILOS DE INTERFAZ (Sin cambios) */
+            
+            /* INTERFAZ DE CARGA */
             #overlay-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #ffffff 0%, #e0e0e0 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease-out; }
             #overlay-logo { max-width: 50%; height: auto; margin-bottom: 20px; }
             #loading-text { font-size: 16px; color: #666; animation: blink 1.5s infinite; }
             #start-button { display: none; width: 130px; height: 130px; background: radial-gradient(circle, #d4af37 0%, #b8962e 100%); color: white; border-radius: 50%; border: 4px solid #fff; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(212, 175, 55, 0.6); animation: pulse 2s infinite; }
+            
             @keyframes blink { 0%,100% {opacity:1} 50% {opacity:0.5} }
             @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
-            .fade-out { opacity: 0; pointer-events: none; }
+            
+            /* IMPORTANTE: pointer-events: none asegura que al desvanecerse no bloquee el mouse */
+            .fade-out { opacity: 0; pointer-events: none !important; }
+            
             #whatsapp-button { display: none; position: fixed; bottom: 20px; left: 20px; z-index: 9998; }
             #whatsapp-button img { width: 50px; height: 50px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
         </style>
 
         <script>
-            // --- SISTEMA DE ESTRELLAS FUGACES NEÓN ---
+            // --- SISTEMA DE ESTRELLAS FUGACES ---
             AFRAME.registerComponent('shooting-stars-system', {
-                schema: {
-                    color: { default: '#ff073a' }, 
-                    minInterval: { default: 800 }, 
-                    maxInterval: { default: 2500 } 
-                },
+                schema: { color: { default: '#ff073a' }, minInterval: { default: 800 }, maxInterval: { default: 2500 } },
                 init: function () {
                     this.isRunning = false;
                     document.querySelector("#start-button").addEventListener('click', () => {
@@ -49,26 +51,15 @@
                     const startPos = new THREE.Vector3(side * (15 + Math.random() * 10), 10 + Math.random() * 5, -25);
                     const endPos = new THREE.Vector3(-side * (15 + Math.random() * 10), -5 - Math.random() * 5, -25);
                     const length = 5 + Math.random() * 5;
-                    
                     star.setAttribute('geometry', { primitive: 'plane', height: length, width: 0.04 });
-                    star.setAttribute('material', {
-                        shader: 'standard', color: this.data.color, emissive: this.data.color, 
-                        emissiveIntensity: 4, transparent: true, opacity: 0.9, blending: 'additive', side: 'double'
-                    });
+                    star.setAttribute('material', { shader: 'standard', color: this.data.color, emissive: this.data.color, emissiveIntensity: 4, transparent: true, opacity: 0.9, blending: 'additive', side: 'double' });
                     star.object3D.position.copy(startPos);
                     star.object3D.lookAt(endPos);
                     star.object3D.rotateX(Math.PI / 2);
-
                     const duration = 1000 + Math.random() * 1000;
-                    star.setAttribute('animation__move', {
-                        property: 'position', to: `${endPos.x} ${endPos.y} ${endPos.z}`, dur: duration, easing: 'linear'
-                    });
-                    star.setAttribute('animation__fade', {
-                        property: 'material.opacity', from: 0.9, to: 0, dur: duration * 0.8, delay: duration * 0.2, easing: 'linear'
-                    });
-                    star.addEventListener('animationcomplete__move', () => {
-                        if(star.parentNode) star.parentNode.removeChild(star);
-                    });
+                    star.setAttribute('animation__move', { property: 'position', to: `${endPos.x} ${endPos.y} ${endPos.z}`, dur: duration, easing: 'linear' });
+                    star.setAttribute('animation__fade', { property: 'material.opacity', from: 0.9, to: 0, dur: duration * 0.8, delay: duration * 0.2, easing: 'linear' });
+                    star.addEventListener('animationcomplete__move', () => { if(star.parentNode) star.parentNode.removeChild(star); });
                     this.el.sceneEl.appendChild(star);
                 }
             });
@@ -89,14 +80,16 @@
                     }); 
                     startBtn.addEventListener('click', () => { 
                         overlay.classList.add('fade-out'); 
-                        setTimeout(() => { overlay.style.display = 'none'; }, 800); 
+                        // Forzamos a ocultar el div completamente después de la animación para liberar el mouse
+                        setTimeout(() => { 
+                            overlay.style.display = 'none'; 
+                            overlay.style.zIndex = "-1"; 
+                        }, 800); 
                         waBtn.style.display = 'block'; 
                         if(audio) { audio.volume = 1.0; audio.play(); } 
                     }); 
                 } 
             });
-            
-            // NOTA: Se ha eliminado 'model-controller' para usar el sistema nativo de órbita y paneo
         </script>
     </head>
 
@@ -118,7 +111,7 @@
             vr-mode-ui="enabled: false">
             
             <a-assets>
-                <a-asset-item id="modeloGLB" src="assets/tanjirofinal5.glb"></a-asset-item>
+                <a-asset-item id="modeloGLB" src="assets/tanjirofinal4.glb"></a-asset-item>
             </a-assets>
 
             <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
@@ -127,16 +120,18 @@
 
             <a-entity 
                 camera 
-                position="0 1.5 2" 
+                look-controls="enabled: false" 
                 orbit-controls="
-                    target: 0 0.5 -1; 
-                    enableDamping: true; 
-                    dampingFactor: 0.1; 
-                    rotateSpeed: 0.5; 
-                    minDistance: 0.3; 
-                    maxDistance: 5;
+                    target: 0 0.5 -1;
+                    enableDamping: true;
+                    dampingFactor: 0.125;
+                    rotateSpeed: 0.5;
+                    minDistance: 0.2;
+                    maxDistance: 8;
                     panSpeed: 0.8;
-                ">
+                    zoomSpeed: 1.2;
+                "
+                position="0 1.5 2">
             </a-entity>
 
             <a-entity 
